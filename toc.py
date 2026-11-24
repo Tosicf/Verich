@@ -357,7 +357,9 @@ class Toc:
         if bm:
             inner.set(qn('w:anchor'), bm)
             inner.set(qn('w:history'), '1')
-        inner.append(_text_el(text, size=size, bold=(lvl == 1)))
+        # в образцах строки оглавления не жирные — и Word при обновлении поля
+        # сделает их обычными, поэтому держим тот же вид сразу
+        inner.append(_text_el(text, size=size, bold=False))
         rt = _run_el(size)
         rt.append(OxmlElement('w:tab'))
         inner.append(rt)

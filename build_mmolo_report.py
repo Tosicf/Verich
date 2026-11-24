@@ -23,6 +23,7 @@ from docx.shared import Cm, Emu, Pt, RGBColor
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
 from mmolo_models import models, fmt, RES, CAP, C1, C2, C3  # noqa: E402
+from toc import Toc                                          # noqa: E402
 
 ASSETS = os.path.join(ROOT, 'report_assets')
 OUT = os.path.join(ROOT, 'outputs', 'Эконометрика УСР 2 (Пась А.М.) — задание 2.4.docx')
@@ -52,6 +53,8 @@ sec = doc.sections[0]
 sec.page_width, sec.page_height = Emu(7560310), Emu(10692130)
 sec.left_margin, sec.right_margin = Emu(1080135), Emu(539750)
 sec.top_margin, sec.bottom_margin = Emu(720090), Emu(720090)
+
+TOC = Toc(doc, title='ОГЛАВЛЕНИЕ', size=14, levels=2)
 
 
 def set_run_font(run, size=14, bold=False, name='Times New Roman', italic=False, sup=False, sub=False):
@@ -97,6 +100,15 @@ def heading(text, page_break=False):
         doc.add_paragraph().add_run().add_break(WD_BREAK.PAGE)
     p = para(text, align=WD_ALIGN_PARAGRAPH.CENTER, size=14, bold=True, before=16, after=12)
     p.paragraph_format.keep_with_next = True
+    TOC.add(p, 1)
+    return p
+
+
+def part(text):
+    """Заголовок части решения (а), б), в), г)) — попадает в оглавление 2-м уровнем."""
+    p = para(text, bold=True, after=6)
+    p.paragraph_format.keep_with_next = True
+    TOC.add(p, 2)
     return p
 
 
@@ -283,7 +295,7 @@ para('по дисциплине: «Эконометрика и исследов�
      align=WD_ALIGN_PARAGRAPH.CENTER, size=14, after=10)
 para('на тему: «Модели и методы многоцелевой оптимизации»',
      align=WD_ALIGN_PARAGRAPH.CENTER, size=14, after=6)
-para('Задание 2.4', align=WD_ALIGN_PARAGRAPH.CENTER, size=14, after=140)
+para('Задание 2.4', align=WD_ALIGN_PARAGRAPH.CENTER, size=14, after=118)
 SIGN_LEFT = Emu(-180340)
 
 
@@ -297,7 +309,7 @@ sign_line('Выполнил:')
 sign_line('студент')
 sign_line('группы 24ИТ-3' + ' ' * 55 + 'Пась А.М.', after=6)
 sign_line('Проверил:')
-sign_line('' + ' ' * 70 + 'Свитина', after=140)
+sign_line('' + ' ' * 70 + 'Свитина', after=118)
 para('ПИНСК 2026', align=WD_ALIGN_PARAGRAPH.CENTER, size=14, after=0)
 
 # ================================ ЗАДАЧА ======================================
@@ -346,7 +358,7 @@ para('Во всех пунктах f1 (прибыль) и f2 (оптовая ц�
      'оптимальными планами.', first_indent=1.25, after=10)
 
 # ------------------------------- а) ------------------------------------------
-para('а) Решение методом последовательных уступок.', bold=True, after=6)
+part('а) Решение методом последовательных уступок.')
 para('Критерии упорядочены по важности: f1 (прибыль) → f2 (оптовая цена) → f3 '
      '(трудоемкость). По первым двум критериям заданы уступки: Δf1 = 580, '
      'Δf2 = 1090.', first_indent=1.25, after=6)
@@ -394,7 +406,7 @@ para('Таким образом, чтобы условия задачи были
      first_indent=1.25, after=10)
 
 # ------------------------------- б) ------------------------------------------
-para('б) Решение методом ведущего критерия.', bold=True, after=6)
+part('б) Решение методом ведущего критерия.')
 para('По условию самым важным является критерий f1 (прибыль), поэтому остальные '
      'критерии переводятся в разряд ограничений: f2 ≥ 2400 и f3 ≤ 1600 (рисунок 2.4).',
      first_indent=1.25, after=4)
@@ -411,7 +423,7 @@ para('Проверим принадлежность решения област�
      first_indent=1.25, after=10)
 
 # ------------------------------- в) ------------------------------------------
-para('в) Решение методом равных (и наименьших) относительных отклонений.', bold=True, after=6)
+part('в) Решение методом равных (и наименьших) относительных отклонений.')
 para('Дополнительное условие пункта: объем производства продукции первого вида не '
      'менее 20 единиц, т.е. x1 ≥ 20. Сначала решаем задачу по каждому критерию '
      'отдельно.', first_indent=1.25, after=4)
@@ -461,7 +473,7 @@ para('Отклонения всех трёх критериев равны по 
      first_indent=1.25, after=10)
 
 # ------------------------------- г) ------------------------------------------
-para('г) Решение методом минимакса.', bold=True, after=6)
+part('г) Решение методом минимакса.')
 para('По условию пункта третьего вида продукции должно быть произведено не менее 40 '
      'ед., т.е. x3 ≥ 40. Решаем задачу по каждому критерию отдельно (рисунки 2.8–2.10).',
      first_indent=1.25, after=4)
@@ -635,6 +647,8 @@ for extra in list(sec.footer.paragraphs[1:]):
 fp.alignment = WD_ALIGN_PARAGRAPH.CENTER
 add_field(fp, 'PAGE')
 
+TOC.finish()          # страница «ОГЛАВЛЕНИЕ» + номера страниц (Word обновит поля сам)
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
 doc.save(OUT)
+print('оглавление:', TOC.entries())
 print('saved', OUT)

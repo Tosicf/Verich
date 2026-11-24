@@ -80,6 +80,10 @@ heading.paragraph_format.space_after = Pt(12)
 heading.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
 heading.paragraph_format.keep_with_next = True
 
+from toc import Toc  # noqa: E402
+
+TOC = Toc(doc, title='ОГЛАВЛЕНИЕ', size=14, levels=2)
+
 sec = doc.sections[0]
 sec.page_width = 7560310
 sec.page_height = 10692130
@@ -131,6 +135,7 @@ def heading1(text):
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.paragraph_format.space_before = Pt(28)
     p.paragraph_format.space_after = Pt(16)
+    TOC.add(p, 1)
     return p
 
 def caption(text):
@@ -273,6 +278,9 @@ def problem(num, text):
     set_run_font(r, size=14, bold=True)
     r = p.add_run('  ' + text)
     set_run_font(r, size=14)
+    p.paragraph_format.keep_with_next = True
+    TOC.add(p, 2, text='Задача ' + num)
+    return p
 
 problem('1.6(б)', 'Для условной экономики, состоящей из трех отраслей, за отчетный период известны межотраслевые потоки x(ij) и вектор объемов конечного использования продукции Yотч. Учитывая, что p% ВДС приходится на з/п, решить следующие задачи:')
 para('1) построить схему МОБ за отчетный период с дополнительным выделением промежуточного потребления, промежуточных затрат, з/п, прочих элементов ВДС;', size=13, space_after=4).paragraph_format.first_line_indent = Cm(0.5)
@@ -443,14 +451,33 @@ para('где (E − A)⁻¹ – матрица полных материальн
 para('Формула (1.7) является базовой балансовой моделью прогнозирования цен в отраслях экономики:')
 para('p(j) · X(j) = Σi p(i) · x(ij) + p(j) · Z(j),   j = 1, …, n', align=WD_ALIGN_PARAGRAPH.CENTER, size=12, italic=True, space_after=6)
 
-# footer
+# footer: слева подпись, справа номер страницы
 sec = doc.sections[0]
+sec.different_first_page_header_footer = True
 footer = sec.footer
 footer.is_linked_to_previous = False
 fp = footer.paragraphs[0]
-fp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+fp.alignment = WD_ALIGN_PARAGRAPH.LEFT
+tabs = OxmlElement('w:tabs')
+tab = OxmlElement('w:tab')
+tab.set(qn('w:val'), 'right')
+tab.set(qn('w:pos'), '9350')
+tabs.append(tab)
+fp._p.get_or_add_pPr().append(tabs)
 r = fp.add_run('УСР №1  ·  Тема 1  ·  2026')
 set_run_font(r, size=9, bold=False)
+r = fp.add_run('\t')
+set_run_font(r, size=9, bold=False)
+fld = OxmlElement('w:fldSimple')
+fld.set(qn('w:instr'), 'PAGE')
+fr = OxmlElement('w:r')
+ft = OxmlElement('w:t')
+ft.text = '2'
+fr.append(ft)
+fld.append(fr)
+fp._p.append(fld)
 
+TOC.finish()          # ОГЛАВЛЕНИЕ + номера страниц (Word пересчитает поля при открытии)
 doc.save(OUT)
+print('оглавление:', TOC.entries())
 print('saved', OUT)

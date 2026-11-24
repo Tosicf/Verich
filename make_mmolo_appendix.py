@@ -50,8 +50,9 @@ class Sheet:
         if key in self.cache:
             return self.cache[key]
         v = self.raw(r, c)
-        if isinstance(v, str) and v.startswith('=СУММПРОИЗВ('):
-            body = v[len('=СУММПРОИЗВ('):-1]
+        if isinstance(v, str) and (v.startswith('=СУММПРОИЗВ(') or v.startswith('=SUMPRODUCT(')):
+            fname = '=СУММПРОИЗВ(' if v.startswith('=СУММПРОИЗВ(') else '=SUMPRODUCT('
+            body = v[len(fname):-1]
             a, b = body.split(',')
             # попарное произведение двух диапазонов
             ca = [self.raw(*k) for k in _cells(a)]

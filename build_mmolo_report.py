@@ -111,97 +111,93 @@ def formula(text, size=14):
     return p
 
 
-# ------------------------------ OMML helpers ---------------------------------
-def _e(tag, **attrs):
-    el = OxmlElement(tag)
-    for k, v in attrs.items():
-        el.set(qn('m:' + k), v)
-    return el
+# ------------------------------ формулы (OMML) --------------------------------
+sys.path.insert(0, ROOT)
+from omml import Math  # noqa: E402
+
+mm = Math(doc, size=14)
 
 
-def mrun(text, italic=True, bold=False):
-    r = _e('m:r')
-    rpr = _e('m:rPr') if not italic else None
-    run = OxmlElement('w:r')
-    rpr_w = OxmlElement('w:rPr')
-    rfonts = OxmlElement('w:rFonts')
-    for attr in ('w:ascii', 'w:hAnsi', 'w:cs'):
-        rfonts.set(qn(attr), 'Cambria Math')
-    rpr_w.append(rfonts)
-    sz = OxmlElement('w:sz'); sz.set(qn('w:val'), '28'); rpr_w.append(sz)
-    if italic:
-        i = OxmlElement('w:i'); rpr_w.append(i)
-    if bold:
-        OxmlElement('w:b')
-    run.append(rpr_w)
-    t = OxmlElement('w:t')
-    t.text = text
-    t.set(qn('xml:space'), 'preserve')
-    run.append(t)
-    r.append(run)
-    return r
+def F(num, den):
+    """Дробь."""
+    return mm.frac(num, den)
 
 
-def msub(base, sb):
-    el = _e('m:sSub')
-    el.append(_e('m:e')); el[-1].append(mrun(base) if isinstance(base, str) else base)
-    el.append(_e('m:sub')); el[-1].append(mrun(sb) if isinstance(sb, str) else sb)
-    return el
+def s1(t, k):
+    return mm.sub(t, k)
 
 
-def msup(base, sp):
-    el = _e('m:sSup')
-    el.append(_e('m:e')); el[-1].append(mrun(base) if isinstance(base, str) else base)
-    el.append(_e('m:sup')); el[-1].append(mrun(sp) if isinstance(sp, str) else sp)
-    return el
+def ss(t, sb, sup):
+    return mm.subsup(t, sb, sup)
 
 
-def mfrac(num, den):
-    el = _e('m:f')
-    n = _e('m:num')
-    n.append(mrun(num) if isinstance(num, str) else num)
-    d_ = _e('m:den')
-    d_.append(mrun(den) if isinstance(den, str) else den)
-    el.append(n); el.append(d_)
-    return el
+def st(t):
+    """t* — звёздочка сверху (экстремальное значение критерия)."""
+    return mm.sup(t, '*')
 
 
-def mobj(*children):
-    """Собирает <m:oMath> из перечисленных элементов/строк."""
-    om = OxmlElement('m:oMath')
-    for ch in children:
-        om.append(mrun(ch) if isinstance(ch, str) else ch)
-    return om
+def crit(name, coefs, rhs, sense):
+    """Строка вида  f1 = 22x1 + 12x2 + 14x3 → max  (или min)."""
+    items = [s1(name[0], name[1:]), ' = ']
+    for i, c in enumerate(coefs, start=1):
+        if i > 1:
+            items.append(' + ')
+        if c != 1:
+            items.append(f'{ru(c)}')
+        items.append(s1('x', i))
+    items.append('  ')
+    items.append(mm.op(sense))
+    return items
 
 
-def para_math(*children, align=WD_ALIGN_PARAGRAPH.CENTER, before=4, after=4, label=None):
-    p = doc.add_paragraph()
-    p.alignment = align
-    p.paragraph_format.space_before = Pt(before)
-    p.paragraph_format.space_after = Pt(after)
-    p._p.append(mobj(*children))
-    if label:
-        r = p.add_run('\t\t' + label)
-        set_run_font(r, size=14)
-    return p
+def lin(coefs, sense=None, rhs=None):
+    """Линейная часть 2x1 + 4x2 + 4x3 (≤ 400)."""
+    items = []
+    for i, c in enumerate(coefs, start=1):
+        if not c:
+            continue
+        if items:
+            items.append(' + ')
+        cs = ru(abs(c))
+        if cs != '1':
+            items.append(cs if c > 0 else '−' + cs)
+        elif c < 0:
+            items.append('−')
+        items.append(s1('x', i))
+    if sense:
+        items.append(f' {sense} ')
+        if isinstance(rhs, str):
+            items.append(rhs)
+        else:
+            items.append(ru(rhs))
+    return items
+
+
+def mpara(*items, label=None, align='center', before=6, after=6):
+    mm.para(*items, label=label, align=align, before=before, after=after)
+
+
+def crit_row(name, coefs, sense):
+    return [mm.op(sense + ' '), *crit(name, coefs, None, '')]
 
 
 def criterion_block():
-    """ЭММ задачи: три критерия и система ограничений."""
-    para('f1 = 22·x1 + 12·x2 + 14·x3 → max;', align=WD_ALIGN_PARAGRAPH.CENTER)
-    para('f2 = 24·x1 + 16·x2 + 30·x3 → max;', align=WD_ALIGN_PARAGRAPH.CENTER)
-    para('f3 = 20·x1 + 10·x2 + 15·x3 → min;', align=WD_ALIGN_PARAGRAPH.CENTER)
+    """ЭММ задачи: три критерия (система с фигурной скобки)."""
+    mm.para(mm.cases(crit_row('f1', C1, 'max'),
+                     crit_row('f2', C2, 'max'),
+                     crit_row('f3', C3, 'min')),
+            align='center', before=4, after=4)
 
 
 def res_constraints(extra=(), min3=30):
-    para('2·x1 + 4·x2 + 4·x3 ≤ 400;', align=WD_ALIGN_PARAGRAPH.CENTER)
-    para('3·x1 + 2·x2 + 2·x3 ≤ 300;', align=WD_ALIGN_PARAGRAPH.CENTER)
-    para('4·x1 + 5·x2 + 3·x3 ≤ 500;', align=WD_ALIGN_PARAGRAPH.CENTER)
+    rows = [lin(list(RES[0]), '≤', CAP[0]),
+            lin(list(RES[1]), '≤', CAP[1]),
+            lin(list(RES[2]), '≤', CAP[2])]
     if min3:
-        para(f'x3 ≥ {min3};', align=WD_ALIGN_PARAGRAPH.CENTER)
-    for line in extra:
-        para(line, align=WD_ALIGN_PARAGRAPH.CENTER)
-    para('x1 ≥ 0, x2 ≥ 0, x3 ≥ 0.', align=WD_ALIGN_PARAGRAPH.CENTER)
+        rows.append([s1('x', 3), f' ≥ {min3}'])
+    mm.para(mm.cases(*rows), align='center', before=4, after=4)
+    mm.para(s1('x', 1), ' ≥ 0, ', s1('x', 2), ' ≥ 0, ', s1('x', 3), ' ≥ 0',
+            align='center', before=2, after=6)
 
 
 # ------------------------------- таблицы -------------------------------------
@@ -364,7 +360,7 @@ para(f'Получим X1* = ({ru(a["step1"]["x"][0])}; {ru(a["step1"]["x"][1])};
 para('Шаг 2. Так как f1 → max, вводим ограничение по уступке f1 ≥ f1* − Δf1 = '
      f'{ru(a["step1"]["f1"])} − 580 = {ru(a["cons1"])} и решаем задачу по критерию '
      'f2 → max (рисунок 2.2):', first_indent=1.25, after=4)
-formula('22·x1 + 12·x2 + 14·x3 ≥ 1600        (1)')
+mpara(*lin(C1, '≥', 1600), label='(1)')
 figure('mmolo_a2.png', 'Поиск оптимального решения по критерию II (f2 → max) с ограничением (1)')
 para(f'Получим X2* = ({ru(a["step2"]["x"][0])}; {ru(a["step2"]["x"][1])}; '
      f'{ru(a["step2"]["x"][2])}), при этом f1 = {ru(a["step2"]["f1"])}, '
@@ -374,7 +370,7 @@ para('Шаг 3. По критерию f2 назначаем уступку: f2 �
      f'{ru(a["step2"]["f2"])} − 1090 = {ru(a["cons2"])}. Решаем задачу по наименее '
      'важному критерию f3 → min с ограничениями (1) и (2) (рисунок 2.3):',
      first_indent=1.25, after=4)
-formula('24·x1 + 16·x2 + 30·x3 ≥ 2360        (2)')
+mpara(*lin(C2, '≥', 2360), label='(2)')
 figure('mmolo_a3.png', 'Поиск оптимального решения по критерию III (f3 → min) с ограничениями (1), (2)')
 x3a = a['step3']['x']
 para(f'Компромиссное решение: X* = ({ru(x3a[0])}; {ru(x3a[1])}; {ru(x3a[2])}); '
@@ -430,22 +426,22 @@ para(f'X3* = ({ru(c["f3"]["x"][0])}; {ru(c["f3"]["x"][1])}; {ru(c["f3"]["x"][2])
      f'f3* = {ru(c["F"][2])}.', first_indent=1.25, after=6)
 para('Запишем условие равенства относительных отклонений критериев от их экстремальных '
      'значений:', first_indent=1.25, after=4)
-formula('(f1 − f1*) / f1* = (f2 − f2*) / f2* = (f3 − f3*) / f3*')
+mpara(F([s1('f', 1), ' − ', ss('f', 1, '*')], ss('f', 1, '*')), ' = ',
+      F([s1('f', 2), ' − ', ss('f', 2, '*')], ss('f', 2, '*')), ' = ',
+      F([s1('f', 3), ' − ', ss('f', 3, '*')], ss('f', 3, '*')))
 para('Критерии f1 и f2 имеют одинаковое направление оптимизации, поэтому для них '
      'справедливо d1·f1 − d2·f2 = 0, а для пары f1 (max) и f3 (min) направления '
      'противоположны, откуда d1·f1 + d3·f3 = 2, где dк = 1/fк*. С подстановкой '
      'экстремальных значений получаем два дополнительных ограничения:',
      first_indent=1.25, after=4)
-para_math(mfrac(mobj(msub('f', '1')), mobj('2180')),
-          '−',
-          mfrac(mobj(msub('f', '2')), mobj('3450')), '=', mobj('0'), label='(2)')
-para_math(mfrac(mobj(msub('f', '1')), mobj('2180')),
-          '+',
-          mfrac(mobj(msub('f', '3')), mobj('850')), '=', mobj('2'), label='(3)')
+mpara(F(s1('f', 1), '2180'), ' − ', F(s1('f', 2), '3450'), ' = 0', label="(2)")
+mpara(F(s1('f', 1), '2180'), ' + ', F(s1('f', 3), '850'), ' = 2', label="(3)")
 para('После подстановки коэффициентов ограничения (2) и (3) принимают вид:',
      first_indent=1.25, after=4)
-para('0,0031·x1 + 0,0009·x2 − 0,0023·x3 = 0        (2)\u2032', align=WD_ALIGN_PARAGRAPH.CENTER)
-para('0,0336·x1 + 0,0173·x2 + 0,0241·x3 = 2        (3)\u2032', align=WD_ALIGN_PARAGRAPH.CENTER)
+mpara('0,0031', s1('x', 1), ' + 0,0009', s1('x', 2), ' − 0,0023', s1('x', 3),
+      ' = 0', label="(2)′")
+mpara('0,0336', s1('x', 1), ' + 0,0173', s1('x', 2), ' + 0,0241', s1('x', 3),
+      ' = 2', label="(3)′")
 para('В качестве целевой функции берем f1 → max с ограничениями (2)′, (3)′ и исходной '
      'системой (рисунок 2.7):', first_indent=1.25, after=4)
 figure('mmolo_c4.png', 'Компромиссное решение с дополнительными ограничениями (2)′, (3)′')
@@ -552,9 +548,12 @@ para('2.1  Постановка задачи многоцелевой оптим
      'критерий fк(X), достаточно максимизать −fк(X).', first_indent=1.25)
 para('Задача многоцелевой оптимизации записывается как многоцелевая (векторная) задача '
      'математического программирования:', first_indent=1.25, after=4)
-formula('max F(X) = (f1(X), f2(X), …, fK(X))        (2.1)')
-formula('φi(X) ≥ bi,  i = 1, …, m        (2.2)')
-formula('X ≥ 0        (2.3)')
+mpara(mm.op('max '), 'F(X) = (', s1('f', 1), '(X), ', s1('f', 2), '(X), …, ',
+      s1('f', 'K'), '(X))', label='(2.1)')
+mpara(mm.op('max '), 'F(X)', '  ', mm.op('при '), ' ',
+      mm.brk(mm.sub('φ', 'i'), '(X) ≥ ', s1('b', 'i'), ',   i = 1, …, m'),
+      label='(2.2)')
+mpara('X ≥ 0', label='(2.3)')
 para('План X2 не хуже плана X1, если fк(X2) ≥ fк(X1) для всех к = 1, …, K (2.4). Если хотя '
      'бы одно неравенство строгое, план X2 предпочтительнее X1. План оптимален по Парето '
      '(эффективен, компромиссен, субоптимален), если он допустим и не существует другого '
@@ -571,26 +570,24 @@ para('2.3  Метод последовательных уступок. Снач�
      'всех критериев, на первое место ставится самый важный. Находится оптимальное '
      'решение f1* и по нему назначается уступка Δf1. Если f1 → max, далее решается задача '
      'по второму критерию с дополнительным ограничением:', first_indent=1.25, after=4)
-formula('f1 ≥ f1* − Δf1        (2.5)')
+mpara(s1('f', 1), ' ≥ ', ss('f', '1', '*'), ' − Δ', s1('f', 1), label='(2.5)')
 para('После нахождения f2* назначается уступка Δf2 и решается задача по третьему '
      'критерию с двумя дополнительными ограничениями; если f2 → min, ограничение имеет '
      'вид f2 ≤ f2* + Δf2. Решение принимают, если значения всех критериев устраивают; '
      'иначе величины уступок изменяют и задачу решают заново.', first_indent=1.25)
 para('2.4  Метод ведущего критерия. Все критерии, кроме самого важного, переводятся в '
      'разряд ограничений:', first_indent=1.25, after=4)
-formula('max f1(X)  при  fк(X) ≥ βк,  к = 2, …, K        (2.6)')
+mpara(mm.op('max '), s1('f', 1), '(X),   ', mm.op('при '), '  ',
+      s1('f', 'к'), '(X) ≥ ', mm.sub('β', 'к'), ',   к = 2, …, K', label='(2.6)')
 para('где βк — нижние границы (критерии минимизации предварительно умножают на −1). '
      'Полученное решение может не быть эффективным, поэтому проверяют его принадлежность '
      'области компромиссов.', first_indent=1.25)
 para('2.5  Метод равных и наименьших относительных отклонений. Записывают условие '
      'равенства относительных отклонений критериев от их экстремальных значений:',
      first_indent=1.25, after=4)
-para_math(mfrac(mobj(msub('f', '1'), '−', mobj(msub('f', '*'))), mobj(msub('f', '*'))),
-          '=',
-          mfrac(mobj(msub('f', '2'), '−', mobj(msub('f', '*'))), mobj(msub('f', '*'))),
-          '=',
-          mfrac(mobj(msub('f', '3'), '−', mobj(msub('f', '*'))), mobj(msub('f', '*'))),
-          )
+mpara(F([s1('f', 1), ' − ', ss('f', 1, '*')], ss('f', 1, '*')), ' = ',
+      F([s1('f', 2), ' − ', ss('f', 2, '*')], ss('f', 2, '*')), ' = ',
+      F([s1('f', 3), ' − ', ss('f', 3, '*')], ss('f', 3, '*')))
 para('Обозначив dк = 1/fк*, для критериев с одинаковым направлением оптимизации '
      'получают линейное ограничение d1·f1 − d2·f2 = 0, а для критериев с '
      'противоположными направлениями — d1·f1 + d3·f3 = 2. Введённые ограничения '
@@ -599,12 +596,18 @@ para('Обозначив dк = 1/fк*, для критериев с одинак
 para('2.6  Метод минимакса. Сначала задачу решают по каждому критерию отдельно и находят '
      'экстремальные значения fк*; предполагая, что X0 — компромиссное решение, записывают '
      'относительные отклонения:', first_indent=1.25, after=4)
-formula('yk = (Σj ckj·x0j − fк*) / fк*,   k = 1, …, K        (2.7)')
+mpara(s1('y', 'k'), ' = ',
+      F([mm.sum('j', 'n', [s1('c', 'kj'), s1('x', '0j')]), ' − ', ss('f', 'к', '*')],
+        ss('f', 'к', '*')), ',    k = 1, …, K', label='(2.7)')
 para('Среди найденных значений берут наибольшее и требуют, чтобы в искомом компромиссном '
      'решении оно было минимальным: min max(yk). Заменяя отклонения наибольшей величиной '
      'x(n+1) = y, получают ограничения', first_indent=1.25, after=4)
-formula('Σj ckj·xj + fк*·x(n+1) ≥ fк*   (для максимизируемых критериев)        (2.8)')
-formula('Σj hкj·xj − fк*·x(n+1) ≤ fк*   (для минимизируемых критериев)        (2.9)')
+mpara(mm.sum('j', 'n', [s1('c', 'kj'), s1('x', 'j')]), ' + ', ss('f', 'к', '*'),
+      s1('x', 'n+1'), ' ≥ ', ss('f', 'к', '*'), '   ',
+      mm.op('(для максимизируемых критериев)'), label='(2.8)')
+mpara(mm.sum('j', 'n', [s1('h', 'кj'), s1('x', 'j')]), ' − ', ss('f', 'к', '*'),
+      s1('x', 'n+1'), ' ≤ ', ss('f', 'к', '*'), '   ',
+      mm.op('(для минимизируемых критериев)'), label='(2.9)')
 para('Целевая функция расширенной задачи: f = x(n+1) → min. Метод повторяют, пока '
      'наибольшее относительное отклонение уменьшается.', first_indent=1.25, after=10)
 

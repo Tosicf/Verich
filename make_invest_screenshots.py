@@ -86,7 +86,20 @@ def render(ws, r1, r2, c1, c2, fname, widths_map=None, zoom=1.0):
             elif len(txt) <= 5:
                 ax.text((x0 + x1) / 2, ytop - 0.47, txt, ha='center', va='center', fontsize=7.2)
             else:
-                ax.text(x0 + 0.4, ytop - 0.47, txt, ha='left', va='center', fontsize=7.0)
+                # текстовая подпись: если не влезает в столбец, Excel льёт её
+                # вправо по пустым ячейкам — рисуем так же, затирая сетку
+                span = 1
+                need = len(txt) * 1.15 + 0.8
+                while (xs[j + span] - x0 < need and j + span < ncols
+                       and not cell_text(sc, ws, r, c + span)):
+                    ax.add_patch(Rectangle((xs[j + span], ytop - 0.95),
+                                           xs[j + span + 1] - xs[j + span], 0.95,
+                                           facecolor='white', edgecolor='none', lw=0))
+                    span += 1
+                ax.text(x0 + 0.4, ytop - 0.47, txt, ha='left', va='center',
+                        fontsize=7.0, clip_on=True,
+                        bbox=dict(facecolor='white', edgecolor='none', pad=0.2))
+                ax.set_xlim(xs[0], xs[ncols])
     os.makedirs(OUT, exist_ok=True)
     path = os.path.join(OUT, fname)
     fig.savefig(path, dpi=DPI, facecolor='white', bbox_inches='tight', pad_inches=0.02)

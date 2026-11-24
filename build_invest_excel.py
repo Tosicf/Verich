@@ -26,6 +26,29 @@ def put(ws, r, c, v, *, fmt=None, align='right', bold=False):
     return cell
 
 
+def label(ws, r, text, span=3, bold=True, value=None, fmt=None):
+    """Подпись, растянутая на несколько столбцов (объединённая ячейка, как в Excel)."""
+    put(ws, r, 1, text, align='left', bold=bold)
+    for c in range(2, span + 1):
+        put(ws, r, c, None, align='left')
+    if span > 1:
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=span)
+    cell = ws.cell(row=r, column=1)
+    if value is not None:                      # «подпись = значение» в одной ячейке
+        cell.value = None
+        cell = put(ws, r, 1, f'{text} = {fmt_value(value, fmt)}',
+                   align='left', bold=bold)
+    return cell
+
+
+def fmt_value(v, fmt):
+    """Значение в подписи так, как его показал бы Excel."""
+    if fmt and '%' in fmt:
+        dec = fmt.split('.')[1].split('%')[0].count('0')
+        return f'{100 * v:.{dec}f}%'.replace('.', ',')
+    return f'{v:.4f}'.replace('.', ',')
+
+
 def head(ws, r, labels, c0=1):
     for j, h in enumerate(labels):
         if h:
@@ -72,16 +95,16 @@ def sheet_34(wb, d):
     for k, row in enumerate(d['rows']):
         r = b + 2 + k
         put(ws, r, 1, 'вариант %d' % (k + 1), align='left')
-        put(ws, r, 2, row['i'], fmt='0.00%')
-        put(ws, r, 3, '=$B$1+B%d+$B$1*B%d' % (r, r), fmt='0.00%')
+        put(ws, r, 2, row['i'], fmt='0.0000%')
+        put(ws, r, 3, '=$B$1+B%d+$B$1*B%d' % (r, r), fmt='0.0000%')
         put(ws, r, 4, '=%s/(1+C%d)+%s/(1+C%d)^2' % (d['C'][0], r, d['C'][1], r), fmt='0.0000')
         put(ws, r, 5, '=D%d-$B$2' % r, fmt='0.0000')
         put(ws, r, 6, '=D%d/$B$2' % r, fmt='0.0000')
         put(ws, r, 7, 'эффективен' if row['npv'] > 0.5 else
             ('граница' if abs(row['npv']) < 0.5 else 'неэффективен'), align='left')
     last = b + 1 + len(d['rows'])
-    put(ws, last + 1, 1, 'Критический уровень инфляции (NPV = 0)', align='left', bold=True)
-    put(ws, last + 1, 2, d['i_max'], fmt='0.0000%')
+    label(ws, last + 1, 'Критический уровень инфляции i', span=4,
+          value=d['i_max'], fmt='0.0000%')
     return ws
 
 
@@ -139,8 +162,8 @@ def sheet_36(wb, d):
             ('на границе эффективности' if row['critical']
              else 'инвестировать нецелесообразно'), align='left')
     last = b + 1 + len(d['rows'])
-    put(ws, last + 1, 1, 'Критический уровень инфляции (NPV = 0)', align='left', bold=True)
-    put(ws, last + 1, 2, d['i_crit'], fmt='0.0000%')
+    label(ws, last + 1, 'Критический уровень инфляции i (NPV = 0)', span=3,
+          value=d['i_crit'], fmt='0.0000%')
     return ws
 
 
@@ -159,7 +182,8 @@ def sheet_312(wb, d):
         for t in range(5):
             v = cf.get(t, None)
             put(ws, r, 2 + t, v)
-        put(ws, r, 7, p['npv'], fmt='0.0000')      # полная точность, показываем 4 знака
+        # NPV = ΣCF_t·1/(1+r)^t — живой SUMPRODUCT по строкам листа
+        put(ws, r, 7, '=SUMPRODUCT(B%d:F%d,$B$9:$F$9)' % (r, r), fmt='0.0000')
         put(ws, r, 8, p['invest'])
         put(ws, r, 9, p['units'])
         put(ws, r, 10, 1 if p['name'] in d['best']['names'] else 0, fmt='0')

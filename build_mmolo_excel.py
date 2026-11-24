@@ -122,14 +122,14 @@ def write_model_rows(ws, m, start, ncol=4):
         for j, co in enumerate(pad(o['coef'])):
             cell(ws, r, 2 + j, co if co != 0 or j < len(o['coef']) else None)
         cell(ws, r, 2 + nv + 1,
-             f"=СУММПРОИЗВ(B{r}:{get_column_letter(1 + nv)}{r},B${vrow}:{get_column_letter(1 + nv)}${vrow})")
+             f"=SUMPRODUCT(B{r}:{get_column_letter(1 + nv)}{r},B${vrow}:{get_column_letter(1 + nv)}${vrow})")
         r += 1
     for i, c in enumerate(m['cons'], start=1):
         cell(ws, r, 1, i)
         for j, co in enumerate(pad(c['coef'])):
             cell(ws, r, 2 + j, co if co != 0 else None)
         cell(ws, r, 2 + nv + 1,
-             f"=СУММПРОИЗВ(B{r}:{get_column_letter(1 + nv)}{r},B${vrow}:{get_column_letter(1 + nv)}${vrow})")
+             f"=SUMPRODUCT(B{r}:{get_column_letter(1 + nv)}{r},B${vrow}:{get_column_letter(1 + nv)}${vrow})")
         cell(ws, r, 2 + nv + 2, {'<=': '≤', '>=': '≥', '=': '='}.get(c['op'], c['op']), align='left')
         cell(ws, r, 2 + nv + 3, c['rhs'])
         r += 1

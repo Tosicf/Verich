@@ -41,27 +41,26 @@ class Math:
 
     # ---------------------------------------------------------------- runs ----
     def r(self, text, sty=None):
-        """Математический запуск. sty: None (italic-ish), 'p' (plain/upright), 'i'."""
-        run = OxmlElement(W + 'r')
-        rpr = OxmlElement(W + 'rPr')
-        rfonts = OxmlElement(W + 'rFonts')
-        for a in ('ascii', 'hAnsi', 'cs'):
-            rfonts.set(qn(W + a), self.font)
-        rpr.append(rfonts)
-        sz = OxmlElement(W + 'sz'); sz.set(qn(W + 'val'), str(int(self.size * 2)))
-        szcs = OxmlElement(W + 'szCs'); szcs.set(qn(W + 'val'), str(int(self.size * 2)))
-        rpr.append(sz); rpr.append(szcs)
-        run.append(rpr)
-        t = OxmlElement(W + 't'); t.text = text
-        t.set(qn('xml:space'), 'preserve')
-        run.append(t)
+        """Математический запуск: <m:r> (<m:rPr>) <w:rPr> <m:t> — как пишет Word."""
         om = _el('r')
         if sty:
             mrpr = _el('rPr')
             st = _el('sty'); st.set(qn(M + 'val'), sty)
             mrpr.append(st)
             om.append(mrpr)
-        om.append(run)
+        rpr_w = OxmlElement(W + 'rPr')
+        rfonts = OxmlElement(W + 'rFonts')
+        for a in ('ascii', 'hAnsi', 'cs'):
+            rfonts.set(qn(W + a), self.font)
+        rpr_w.append(rfonts)
+        sz = OxmlElement(W + 'sz'); sz.set(qn('w:val'), str(int(self.size * 2)))
+        szcs = OxmlElement(W + 'szCs'); szcs.set(qn('w:val'), str(int(self.size * 2)))
+        rpr_w.append(sz); rpr_w.append(szcs)
+        om.append(rpr_w)
+        t = OxmlElement(M + 't')
+        t.text = text
+        t.set(qn('xml:space'), 'preserve')
+        om.append(t)
         return om
 
     def t(self, text):
@@ -125,7 +124,6 @@ class Math:
         pr = _el('dPr')
         b = _el('begChr'); b.set(qn(M + 'val'), beg); pr.append(b)
         e2 = _el('endChr'); e2.set(qn(M + 'val'), end); pr.append(e2)
-        g = _el('groupChr'); g.set(qn(M + 'val'), '0'); pr.append(g)
         d.append(pr)
         e = _el('e')
         for it in items:
@@ -134,19 +132,22 @@ class Math:
         return d
 
     def cases(self, *rows):
-        """Система: каждая строка — список элементов; большая левая скобка."""
+        """Система (m:m с m:mr-строками) в большой левой фигурной скобке."""
         rows = [r if isinstance(r, (list, tuple)) else [r] for r in rows]
         m = _el('m')
         mp = _el('mPr')
         mc = _el('mcs')
-        for _ in rows:
-            col = _el('mc'); col.set(qn(M + 'align'), 'left'); mc.append(col)
+        col = _el('mc')
+        col.set(qn(M + 'algn'), 'left')
+        mc.append(col)
         mp.append(mc)
         m.append(mp)
         for row in rows:
+            mr = _el('mr')
             e = _el('e')
             self._extend(e, row)
-            m.append(e)
+            mr.append(e)
+            m.append(mr)
         return self.brk(m, beg='{', end='')
 
     def eqarr(self, *rows):
@@ -166,7 +167,9 @@ class Math:
         raise TypeError('use _extend for sequences')
 
     def _extend(self, parent, item):
-        if isinstance(item, str):
+        if isinstance(item, (int, float)):
+            parent.append(self.r(str(item)))
+        elif isinstance(item, str):
             parent.append(self.r(item))
         elif isinstance(item, (list, tuple)):
             for it in item:
@@ -182,6 +185,17 @@ class Math:
             self._extend(om, it)
         return om
 
+    def math_para(self, items, jc='center'):
+        """<m:oMathPara> — «блочная» формула Word: дроби в полный рост,
+        пределы Σ сверху/снизу, выравнивание по центру или по левому краю."""
+        omp = OxmlElement(M + 'oMathPara')
+        pr = OxmlElement(M + 'oMathParaPr')
+        j = OxmlElement(M + 'jc'); j.set(qn(M + 'val'), jc)
+        pr.append(j)
+        omp.append(pr)
+        omp.append(self.omath(*items))
+        return omp
+
     def para(self, *items, label=None, align='center', before=6, after=6, line=None,
              break_before=False):
         """Абзац с формулой; label — метка вида «(3.4)» справа."""
@@ -194,7 +208,7 @@ class Math:
             pf.line_spacing = line
         if break_before:
             p.add_run().add_break(WD_BREAK.PAGE)
-        p._p.append(self.omath(*items))
+        p._p.append(self.math_para(items, 'center' if align == 'center' else 'left'))
         if label:
             r = OxmlElement(W + 'r')
             rpr = OxmlElement(W + 'rPr')

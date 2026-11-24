@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from mmolo_models import models, RES, CAP, C1, C2, C3, fmt  # noqa: E402
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                   'outputs', 'Эконометрика УСР 2.4 (Пась А.М.).xlsx')
+                   'outputs', 'Эконометрика УСР 2 (Пась А.М.) — задание 2.4.xlsx')
 
 FONT = Font(name='Calibri', size=11)
 THIN = Side(style='thin', color='B7B7B7')

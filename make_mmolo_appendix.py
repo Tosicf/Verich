@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from mmolo_models import fmt  # noqa: E402
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-XLSX = os.path.join(ROOT, 'outputs', 'Эконометрика УСР 2.4 (Пась А.М.).xlsx')
+XLSX = os.path.join(ROOT, 'outputs', 'Эконометрика УСР 2 (Пась А.М.) — задание 2.4.xlsx')
 OUT = os.path.join(ROOT, 'report_assets')
 OPS = {'<=': '≤', '>=': '≥', '=': '='}
 

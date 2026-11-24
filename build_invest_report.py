@@ -24,6 +24,7 @@ from docx.shared import Cm, Emu, Pt, RGBColor
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
 from omml import Math  # noqa: E402
+from toc import Toc    # noqa: E402
 
 ASSETS = os.path.join(ROOT, 'report_assets')
 OUT = os.path.join(ROOT, 'outputs',
@@ -66,6 +67,7 @@ sec.left_margin, sec.right_margin = Emu(1080135), Emu(539750)
 sec.top_margin, sec.bottom_margin = Emu(720090), Emu(720090)
 
 mm = Math(doc, size=14)
+TOC = Toc(doc, title='ОГЛАВЛЕНИЕ', size=14, levels=2)
 
 
 def set_run_font(run, size=14, bold=False, name='Times New Roman', italic=False):
@@ -105,12 +107,14 @@ def heading(text, page_break=False):
         doc.add_paragraph().add_run().add_break(WD_BREAK.PAGE)
     p = para(text, align=WD_ALIGN_PARAGRAPH.CENTER, size=14, bold=True, before=16, after=12)
     p.paragraph_format.keep_with_next = True
+    TOC.add(p, 1)
     return p
 
 
 def subhead(text):
     p = para(text, align=WD_ALIGN_PARAGRAPH.CENTER, size=14, bold=True, before=12, after=8)
     p.paragraph_format.keep_with_next = True
+    TOC.add(p, 2)
     return p
 
 
@@ -229,7 +233,7 @@ para('по дисциплине: «Эконометрика и исследов�
      align=WD_ALIGN_PARAGRAPH.CENTER, size=14, after=10)
 para('на тему: «Модели анализа и оценки инвестиционных проектов»',
      align=WD_ALIGN_PARAGRAPH.CENTER, size=14, after=6)
-para('Задания 3.4, 3.6, 3.12', align=WD_ALIGN_PARAGRAPH.CENTER, size=14, after=140)
+para('Задания 3.4, 3.6, 3.12', align=WD_ALIGN_PARAGRAPH.CENTER, size=14, after=118)
 SIGN_LEFT = Emu(-180340)
 
 
@@ -243,7 +247,7 @@ sign_line('Выполнил:')
 sign_line('студент')
 sign_line('группы 24ИТ-3' + ' ' * 55 + 'Пась А.М.', after=6)
 sign_line('Проверил:')
-sign_line('' + ' ' * 70 + 'Свитина', after=140)
+sign_line('' + ' ' * 70 + 'Свитина', after=118)
 para('ПИНСК 2026', align=WD_ALIGN_PARAGRAPH.CENTER, size=14, after=0)
 
 # ================================ ЗАДАЧА =====================================
@@ -617,6 +621,8 @@ for extra in list(sec.footer.paragraphs[1:]):
 fp.alignment = WD_ALIGN_PARAGRAPH.CENTER
 add_field(fp, 'PAGE')
 
+TOC.finish()          # страница «ОГЛАВЛЕНИЕ» + номера страниц (Word обновит поля сам)
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
 doc.save(OUT)
+print('оглавление:', TOC.entries())
 print('saved', OUT)

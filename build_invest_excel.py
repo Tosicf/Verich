@@ -46,7 +46,7 @@ def sheet_34(wb, d):
     put(ws, 3, 2, len(d['C']))
 
     put(ws, 5, 1, 'Базовый расчёт (без инфляции)', align='left', bold=True)
-    head(ws, 6, ['Год t', 'Поток C(t)', 'множитель 1/(1+r)^t', 'PV потока'])
+    head(ws, 6, ['Год t', 'Поток C(t)', 'множитель', 'PV потока'])
     for k, cf in enumerate(d['C'], start=1):
         r = 6 + k
         put(ws, r, 1, k, align='center')
@@ -97,8 +97,7 @@ def sheet_36(wb, d):
     put(ws, 3, 2, len(d['C']))
 
     put(ws, 5, 1, 'Расчёт без учёта инфляции', align='left', bold=True)
-    head(ws, 6, ['Год t', 'Поток C(t)', 'множитель 1/(1+r)^t', 'PV потока',
-                 'наращённый поток FV'])
+    head(ws, 6, ['Год t', 'Поток C(t)', 'множитель', 'PV потока', 'наращ. FV'])
     for k, cf in enumerate(d['C'], start=1):
         r = 6 + k
         put(ws, r, 1, k, align='center')

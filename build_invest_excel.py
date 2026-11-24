@@ -158,9 +158,8 @@ def sheet_36(wb, d):
         put(ws, r, 5, '=D%d-$B$2' % r, fmt='0.0000')
         put(ws, r, 6, '=D%d/$B$2' % r, fmt='0.0000')
         put(ws, r, 7, d['base']['irr'], fmt='0.0000%')
-        put(ws, r, 8, 'инвестировать целесообразно' if row['npv'] > 0.5 else
-            ('на границе эффективности' if row['critical']
-             else 'инвестировать нецелесообразно'), align='left')
+        put(ws, r, 8, 'можно' if row['npv'] > 0.5 else
+            ('на границе' if row['critical'] else 'нельзя'), align='left')
     last = b + 1 + len(d['rows'])
     label(ws, last + 1, 'Критический уровень инфляции i (NPV = 0)', span=3,
           value=d['i_crit'], fmt='0.0000%')
